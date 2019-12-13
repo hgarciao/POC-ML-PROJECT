@@ -1,0 +1,72 @@
+@Library('POC-ML-SHARED-LIBRARIES')_
+
+pipeline {
+    agent any
+        stages {
+            stage('Checkout'){
+                steps{
+                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId:'github',
+                  usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']
+                    ]){
+                        sh "git clone --branch master https://github.com/hgarciao/POC-ML-PROJECT.git"
+                    }
+                }
+            }
+            stage('Read NTB') {
+                steps {
+                    script{
+                        ntbfile = readJSON file: "./ntbs/POC_COMPLETO.ipynb"
+                        def imports = []
+                        def parameters = []
+                        def preproc = []
+                        def preproc_test = []
+                        def trainning = []
+                        def trainning_test = []
+                        def results = []
+                        
+                        def imprt = ntbfile.cells.each{ 
+                            if(it.metadata.tags){
+                                def contadorpreproc = 0
+                                if(it.metadata.tags.contains('preproc')){
+                                    println it.metadata.tags
+                                    /*contadorpreproc = contadorpreproc+1
+                                    def stagename
+                                    if(it.metadata.tags.size()>=2){
+                                        stagename = it.metadata.tag[1]
+                                    }else{
+                                        stagename = 'preproc ' + "${contadorpreproc}"
+                                    }
+                                    
+                                    stage("${stagename}"){
+                                            sh "echo 'holi'"
+                                    }*/
+                                }
+                            }
+                        }
+                        
+                        
+                        println imports
+                        
+                        println parameters
+                        
+                        println preproc
+                        
+                        println preproc_test
+                        
+                        println trainning
+                        
+                        println trainning_test
+                        
+                        println results
+                    }
+                    
+                }
+            }
+        }
+        
+        post {
+            always {
+              deleteDir()
+            }
+        }
+    }
