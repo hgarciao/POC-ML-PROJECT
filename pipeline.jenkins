@@ -1,1 +1,23 @@
+@Library('POC-ML-SHARED-LIBRARIES')_
 
+pipeline {
+    agent any
+        stages {
+            stage('Stage 1') {
+                steps {
+                    script{
+                        for (int i = 0; i < 3; i++) {
+                            stage("Test ${i}") {
+                                sh "echo ${i}"
+                            }
+                        }
+                    }
+                }
+            }
+            stage('Stage 2') {
+                steps {
+                    echo 'logic'
+                }
+            }
+        }
+    }
