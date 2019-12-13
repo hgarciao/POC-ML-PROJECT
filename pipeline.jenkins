@@ -12,24 +12,76 @@ pipeline {
                     }
                 }
             }
-            stage('Read NTB') {
+            stage('Generate Pipeline') {
                 steps {
                     script{
+                        
                         ntbfile = readJSON file: "./ntbs/POC_COMPLETO.ipynb"
-                        def imports = []
+                        
+                        def taggedCells = ntbfile.cells.findAll(){it.metadata.tags}
+                        def importCell = taggedCells.findAll(){it.metadata.tags.contains('imports')}
+                        def resultCell = taggedCells.findAll(){it.metadata.tags.contains('results')}
+                        def pipelineCells = taggedCells.findAll(){!it.metadata.tags.contains('imports') && !it.metadata.tags.contains('results') }
+                        
+                        def inputcont=0
+                        def preproccont=0
+                        def trainningcont=0
+                        def testpreproccont=0
+                        def testtrainningcont=0
+                        pipelineCells.each{
+                            if(it.metadata.tags.contains('parameters')){
+                                inputcont = inputcont + 1
+                                stage("User Input ${inputcont}"){
+                                    sh "echo 'stage pidiendo input'"
+                                }
+                            }
+                            else if(it.metadata.tags.contains('preproc')){
+                                if(it.metadata.tags.contains('test')){
+                                   testpreproccont = testpreproccont + 1 
+                                    stage("${it.metadata.tags.get(2)}"){
+                                        sh "echo 'stage ejecutando python TEST PREPROC'" 
+                                    }
+                                }
+                                else{
+                                    preproccont = preproccont + 1
+                                    stage("${it.metadata.tags.get(1)}"){
+                                        sh "echo 'stage ejecutando python PREPROC'" 
+                                    }
+                                }
+                            }
+                            else if(it.metadata.tags.contains('trainning')){
+                                if(it.metadata.tags.contains('test')){
+                                    testtrainningcont = testtrainningcont + 1
+                                    stage("${it.metadata.tags.get(2)}"){
+                                        sh "echo 'stage ejecutando python TEST TRAINNING'"  
+                                    }
+                                }
+                                else{
+                                    trainningcont = trainningcont + 1
+                                    stage("${it.metadata.tags.get(1)}"){
+                                        sh "echo 'stage ejecutando python TRAINNING'"  
+                                    }
+                                }
+                            }
+                        }
+                        
+                        
+                        /*def imports = []
                         def parameters = []
-                        def preproc = []
                         def preproc_test = []
                         def trainning = []
                         def trainning_test = []
-                        def results = []
+                        def results = []*/
                         
-                        def imprt = ntbfile.cells.each{ 
+                        
+                        
+                        /*def imprt = ntbfile.cells.each{ 
                             if(it.metadata.tags){
+                                it.metadata.tags
                                 def contadorpreproc = 0
                                 if(it.metadata.tags.contains('preproc')){
                                     println it.metadata.tags
-                                    /*contadorpreproc = contadorpreproc+1
+                                    contadorpreproc = contadorpreproc+1
                                     def stagename
                                     if(it.metadata.tags.size()>=2){
                                         stagename = it.metadata.tag[1]
@@ -39,13 +91,13 @@ pipeline {
                                     
                                     stage("${stagename}"){
                                             sh "echo 'holi'"
-                                    }*/
+                                    }
                                 }
                             }
-                        }
+                        }*/
                         
                         
-                        println imports
+                        /*println imports
                         
                         println parameters
                         
@@ -57,7 +109,7 @@ pipeline {
                         
                         println trainning_test
                         
-                        println results
+                        println results*/
                     }
                     
                 }
