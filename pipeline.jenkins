@@ -22,6 +22,10 @@ pipeline {
                         
                         def taggedCells = ntbfile.cells.findAll(){it.metadata.tags}
                         def importCell = taggedCells.findAll(){it.metadata.tags.contains('imports')}
+                        def imports = ''
+                        importCell.source.get(0).each{
+                            imports = imports + it
+                        }
                         def resultCell = taggedCells.findAll(){it.metadata.tags.contains('results')}
                         def pipelineCells = taggedCells.findAll(){!it.metadata.tags.contains('imports') && !it.metadata.tags.contains('results') }
                         
@@ -32,15 +36,126 @@ pipeline {
                           ]
                           ) {
                             node('pythonpod') {
-                                stage('test'){
+                                stage('Installing Dependencies'){
                                    container('python') {
                                         sh "pip install pipreqs"
                                         sh "mkdir pythonfiles"
-                                        sh "echo \"${importCell.source.get(0)}\" > pythonfiles/imports.py"
-                                        sh "pipreqs pythonfiles/."
-                                        sh "ls"
+                                        sh "echo \"${imports}\" > pythonfiles/imports.py"
+                                        sh "pipreqs pythonfiles"
+                                        sh "cat pythonfiles/requirements.txt"
+                                        sh "python -m pip install -r  pythonfiles/requirements.txt"
                                    }
                                 }
+                                
+                                def inputcont=0
+                                def preproccont=0
+                                def trainningcont=0
+                                def testpreproccont=0
+                                def testtrainningcont=0
+                                
+                                imports = imports + '\nimport shelve'
+                                
+                                def savesessioncode= '''
+filename='shelve.out'
+my_shelf = shelve.open(filename,'n') # 'n' for new
+                                        
+for key in dir():
+    try:
+        my_shelf[key] = globals()[key]
+    except TypeError:
+        #
+        # __builtins__, my_shelf, and imported modules can not be shelved.
+        #
+        print('ERROR shelving: {0}'.format(key))
+my_shelf.close()
+                                '''
+                                def restoresessioncode='''
+filename='shelve.out'
+my_shelf = shelve.open(filename)
+for key in my_shelf:
+    globals()[key]=my_shelf[key]
+my_shelf.close()
+                                '''
+                                
+                                
+                                pipelineCells.each{
+                                    if(it.metadata.tags.contains('parameters')){
+                                        inputcont = inputcont + 1
+                                        def props = readProperties text: "${it.source.get(0)}"
+                                        stage("User Input ${inputcont}"){
+                                            container('python') {
+                                               def userInput
+                                               def newvariables = ''
+                                               props.keySet().each{
+                                                  userInput = input(
+                                                    id: 'Proceed1',message: "Ingrese ${it}", parameters: [
+                                                    [$class: 'TextParameterDefinition', defaultValue: "${props.get(it).replaceAll("\"","")}", description: '',name:'']
+                                                    ])
+                                                    
+                                                    if(props.get(it).contains('"')){
+                                                         userInput = "\"${userInput}\""
+                                                    }
+                                                    
+                                                    newvariables = newvariables + "\n${it} = ${userInput}"
+                                               }
+                                               
+                                              newvariables = "${imports}\n${restoresessioncode}\n${newvariables}\n${savesessioncode}"
+                                              
+                                              writeFile(file: "newvariables.py", text: "${newvariables}")
+                                              sh "cat newvariables.py"
+                                              sh "python newvariables.py"
+                                              sh "ls"
+                                          
+                                            }
+                                        }
+                                    }
+                                    else if(it.metadata.tags.contains('preproc')){
+                                        if(it.metadata.tags.contains('test')){
+                                           testpreproccont = testpreproccont + 1 
+                                            stage("${it.metadata.tags.get(2)}"){
+                                                container('python') {
+                                                    def code = "${it.source.join(',')}"
+                                                    println code
+                                                }
+                                            }
+                                        }
+                                        else{
+                                            preproccont = preproccont + 1
+                                            stage("${it.metadata.tags.get(1)}"){
+                                               container('python') {
+                                                    def code = ""
+                                                    it.source.each{
+                                                        code = code + "\n${it.toString().substring(1,it.toString().length())}"
+                                                    }
+                                                    
+                                                    code = "${imports}\n${restoresessioncode}\n${code}\n${savesessioncode}"
+                                              
+                                                  writeFile(file: "${it.metadata.tags.get(1)}.py", text: "${code}")
+                                                  sh "cat ${it.metadata.tags.get(1)}.py"
+                                                  sh "python ${it.metadata.tags.get(1)}.py"
+                                                  sh "ls"
+                                                  sh "cat shelve.out"
+                                                    
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else if(it.metadata.tags.contains('trainning')){
+                                        if(it.metadata.tags.contains('test')){
+                                            testtrainningcont = testtrainningcont + 1
+                                            stage("${it.metadata.tags.get(2)}"){
+                                                sh "echo 'stage ejecutando python TEST TRAINNING'"  
+                                            }
+                                        }
+                                        else{
+                                            trainningcont = trainningcont + 1
+                                            stage("${it.metadata.tags.get(1)}"){
+                                                sh "echo 'stage ejecutando python TRAINNING'"  
+                                            }
+                                        }
+                                    }
+                                }
+                                
                             }
                           }
                         }
