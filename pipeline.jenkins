@@ -3,17 +3,6 @@
 pipeline {
     agent { label 'master'}
         stages {
-            stage('Checkout'){
-                steps{
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId:'github',
-                  usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']
-                    ]){
-                        sh "git clone --branch master https://github.com/hgarciao/POC-ML-PROJECT.git"
-                    }
-                }
-            }
-            
-            
             stage('Generate Pipeline 1') {
                 steps {
                     script{
@@ -36,6 +25,13 @@ pipeline {
                           ]
                           ) {
                             node('pythonpod') {
+                                stage('Checkout'){
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId:'github',
+                                      usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']
+                                        ]){
+                                            sh "git clone --branch master https://github.com/hgarciao/POC-ML-PROJECT.git"
+                                        }
+                                }
                                 stage('Installing Dependencies'){
                                    container('python') {
                                         sh "pip install pipreqs"
