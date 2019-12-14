@@ -61,6 +61,28 @@ except:
     print('primera vez')
                                 '''
                                 
+                                def resultsprops
+                                
+                                stage("Read Result Names"){
+                                    container('python') {
+                                        def results= ''
+                                        resultCell.source.get(0).each{
+                                            results = results + it
+                                        }
+                                        
+                                        resultsprops = readProperties  text: "${results}"
+                                        
+                                        results = "${imports}\n${restoresessioncode}\n${results}\n${savesessioncode}"
+                                      
+                                        writeFile(file: "results.py", text: "${results}")
+                                                  sh "cat results.py"
+                                                  sh "python results.py"
+                                                  
+                                        println resultsprops
+                                    }
+                                }
+                                
+                                
                                 
                                 pipelineCells.each{
                                     if(it.metadata.tags.contains('parameters')){
@@ -164,6 +186,16 @@ except:
                                         }
                                     }
                                 }
+                                
+                                stage("Save Results"){
+                                    container('python') {
+                                        sh 'ls'
+                                        resultsprops.keySet().each{
+                                             archiveArtifacts artifacts: "${resultsprops[it].replaceAll("\"","")}", fingerprint: true
+                                        }
+                                    }
+                                }
+                                
                                 
                             }
                           }
